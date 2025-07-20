@@ -1,5 +1,3 @@
-const fs = require("fs");
-const path = require("path");
 const { getPrefix } = global.utils;
 const { commands, aliases } = global.GoatBot;
 
@@ -56,7 +54,7 @@ module.exports = {
     const { threadID } = event;
     const prefix = getPrefix(threadID);
     const commandName = args[0]?.toLowerCase();
-    const bannerPath = path.join(__dirname, "assets", "20250319_111041.png");
+    const bannerUrl = "https://i.postimg.cc/wjjG8ybG/images-4.jpg"; // Updated image URL
 
     if (commandName === 'c' && args[1]) {
       const categoryArg = args[1].toUpperCase();
@@ -120,14 +118,11 @@ module.exports = {
       replyMsg += "\n" + this.langs.en.totalCommands.replace(/{total}/g, totalCommands);
 
       try {
-        if (fs.existsSync(bannerPath)) {
-          return message.reply({
-            body: replyMsg,
-            attachment: fs.createReadStream(bannerPath)
-          });
-        } else {
-          return message.reply(replyMsg);
-        }
+        // Send with the new image URL
+        return message.reply({
+          body: replyMsg,
+          attachment: await global.utils.getStreamFromURL(bannerUrl)
+        });
       } catch (e) {
         console.error("Couldn't load help banner:", e);
         return message.reply(replyMsg);
