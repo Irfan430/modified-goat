@@ -13,25 +13,25 @@
   "language": "en",
   "notesLanguage": "change to your language with ISO 639-1 code, available languages: vi (Vietnamese), en (English)",
   "nickNameBot": "obito-bot",
-  "prefix": "/",
+  "prefix": "X",
   "adminOnly": {
     "enable": false,
     "ignoreCommand": []
   },
   "adminBot": [
-    "100078794143432",
-    "100001986888287",
-    "100000180724818"
+    "100054167013531",
+    "100054167013531",
+    "100054167013531"
   ],
   "developers": [
-    "100078794143432",
-    "100001986888287",
-    "100000180724818"
+    "100054167013531",
+    "100054167013531",
+    "100054167013531"
   ],
   "premium": [
-    "100078794143432",
-    "100001986888287",
-    "100000180724818"
+    "100054167013531",
+    "100054167013531",
+    "100054167013531"
   ],
   "whiteListMode": {
     "enable": false,
@@ -157,9 +157,9 @@
     "logLevel": "error",
     "selfListen": true,
     "selfListenEvent": true,
-    "autoMarkDelivery": false,
+    "autoMarkDelivery": true,
     "autoReconnect": true,
-    "online": false,
+    "online": true,
     "notes": "Document here: https://github.com/ntkhang03/fb-chat-api/blob/master/DOCS.md#apisetoptionsoptions "
   }
 }
