@@ -1,42 +1,50 @@
-const axios = require("axios");
+const axios = require('axios');
+const fs = require('fs-extra');
 
 module.exports = {
   config: {
-    name: "cat",
-    aliases: [],
-    version: "1.0",
-    author: "Irfan420x",
-    countDown: 5,
-    role: 0,
-    shortDescription: "AI-generated cat image",
-    longDescription: "Generates an AI image of a cat using kaiz-apis",
-    category: "fun",
-    guide: "{pn}"
+    name: "poli",
+    credits: "IRFAN",
+    category: "IMAGE" // Changed from "ai" to "IMAGE"
   },
 
-  onStart: async function ({ api, event }) {
-    try {
-      const prompt = "A cat";
-      const apiKey = "92dfd003-fe2d-4c30-9f0b-cc4532177838";
-      const url = `https://kaiz-apis.gleeze.com/api/poli?prompt=${encodeURIComponent(prompt)}&apikey=${apiKey}`;
-      
-      const res = await axios.get(url);
-      const imageUrl = res.data.url;
+  onStart: async function({ api, event, args }) {
+    let { threadID, messageID } = event;
+    let query = args.join(" ");
+    if (!query) return api.sendMessage("⚠️ Please provide a text/query!", threadID, messageID);
 
-      if (!imageUrl) {
-        return api.sendMessage("❌ Image not found.", event.threadID, event.messageID);
+    api.sendMessage("⏳ Generating image, please wait...", threadID, async (err, info) => {
+      if (err) return console.error(err);
+
+      const cacheDir = __dirname + "/cache";
+      const imagePath = `${cacheDir}/poli_${Date.now()}.png`;
+
+      try {
+        if (!fs.existsSync(cacheDir)) {
+          await fs.mkdir(cacheDir, { recursive: true });
+        }
+
+        const response = await axios.get(`https://kaiz-apis.gleeze.com/api/poli`, {
+          params: {
+            prompt: query,
+            apikey: "92dfd003-fe2d-4c30-9f0b-cc4532177838"
+          },
+          responseType: "arraybuffer"
+        });
+
+        await fs.writeFile(imagePath, Buffer.from(response.data, "binary"));
+
+        api.sendMessage({
+          body: "✅ Here's your generated image!",
+          attachment: fs.createReadStream(imagePath)
+        }, threadID, () => {
+          fs.unlinkSync(imagePath);
+        }, messageID);
+
+      } catch (error) {
+        console.error("Error Details:", error.message);
+        api.sendMessage("❌ Failed to generate image. Please try again later.", threadID, messageID);
       }
-
-      const imgRes = await axios.get(imageUrl, { responseType: "stream" });
-
-      return api.sendMessage({
-        body: "Here's your AI cat 🐱",
-        attachment: imgRes.data
-      }, event.threadID, event.messageID);
-
-    } catch (err) {
-      console.error(err);
-      return api.sendMessage("❌ Something went wrong while generating the cat image.", event.threadID, event.messageID);
-    }
+    });
   }
 };
