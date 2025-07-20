@@ -1,68 +1,57 @@
-const { GoatBotApis } = global.utils;
+const axios = require('axios');
+const fs = require('fs-extra');
 
 module.exports = {
-	config: {
-		name: "texttoimage",
-		aliases: ["midjourney", "openjourney", "text2image"],
-		version: "1.3",
-		author: "NTKhang",
-		countDown: 5,
-		role: 0,
-		description: {
-			uid: "Tạo ảnh từ văn bản của bạn",
-			en: "Create image from your text"
-		},
-		category: "info",
-		guide: {
-			vi: "   {pn} <prompt>: tạo ảnh từ văn bản của bạn"
-				+ "\n    Ví dụ: {pn} mdjrny-v4 create a gta style house, gta, 4k, hyper detailed, cinematic, realistic, unreal engine, cinematic lighting, bright lights"
-				+ "\n    Example: {pn} mdjrny-v4 create a gta style house, gta, 4k, hyper detailed, cinematic, realistic, unreal engine, cinematic lighting, bright lights"
-		}
-	},
+  config: {
+    name: "text2image",
+    author: "IRFAN X KAIZ",
+    credits: "IRFAN X KAIZ",
+    category: "IMAGE",
+    description: "Generate images from text prompts",
+    usage: "[text prompt]"
+  },
 
-	langs: {
-		vi: {
-			syntaxError: "⚠️ Vui lòng nhập prompt",
-			error: "❗ Đã có lỗi xảy ra, vui lòng thử lại sau:\n%1",
-			serverError: "❗ Server đang quá tải, vui lòng thử lại sau",
-			missingGoatApiKey: "❗ Chưa cài đặt apikey cho GoatBot, vui lòng truy cập goatbot.tk để lấy apikey và cài đặt vào file configCommands.json > envGlobal.goatbotApikey và lưu lại"
-		},
-		en: {
-			syntaxError: "⚠️ Please enter prompt",
-			error: "❗ An error has occurred, please try again later:\n%1",
-			serverError: "❗ Server is overloaded, please try again later",
-			missingGoatApiKey: "❗ Not set apikey for GoatBot, please visit goatbot.tk to get apikey and set it to configCommands.json > envGlobal.goatbotApikey and save"
-		}
-	},
+  onStart: async function({ api, event, args }) {
+    let { threadID, messageID } = event;
+    let prompt = args.join(" ");
+    
+    if (!prompt) {
+      return api.sendMessage("⚠️ Please provide a text prompt!", threadID, messageID);
+    }
 
-	onStart: async function ({ message, args, getLang, envGlobal }) {
-		const goatBotApi = new GoatBotApis(envGlobal.goatbotApikey);
-		if (!goatBotApi.isSetApiKey())
-			return message.reply(getLang("missingGoatApiKey"));
-		const prompt = args.join(" ");
-		if (!prompt)
-			return message.reply(getLang("syntaxError"));
+    api.sendMessage("🖌️ Generating image from text...", threadID, async (err, info) => {
+      if (err) return console.error(err);
 
-		try {
-			const { data: imageStream } = await goatBotApi.api({
-				url: "/image/mdjrny",
-				method: "GET",
-				params: {
-					prompt,
-					style_id: 28,
-					aspect_ratio: "1:1"
-				},
-				responseType: "stream"
-			});
+      const cacheDir = __dirname + "/cache";
+      const imagePath = `${cacheDir}/text2image_${Date.now()}.png`;
 
-			imageStream.path = "image.jpg";
+      try {
+        if (!fs.existsSync(cacheDir)) {
+          await fs.mkdir(cacheDir, { recursive: true });
+        }
 
-			return message.reply({
-				attachment: imageStream
-			});
-		}
-		catch (err) {
-			return message.reply(getLang("error", err.data?.message || err.message));
-		}
-	}
+        // API call to text2image endpoint
+        const response = await axios.get(`https://kaiz-apis.gleeze.com/api/text2image`, {
+          params: {
+            prompt: encodeURIComponent(prompt),
+            apikey: "92dfd003-fe2d-4c30-9f0b-cc4532177838"
+          },
+          responseType: "arraybuffer"
+        });
+
+        await fs.writeFile(imagePath, Buffer.from(response.data, "binary"));
+
+        api.sendMessage({
+          body: `🎨 Image generated for: "${prompt}"`,
+          attachment: fs.createReadStream(imagePath)
+        }, threadID, () => {
+          fs.unlinkSync(imagePath);
+        }, messageID);
+
+      } catch (error) {
+        console.error("Text2Image API Error:", error.message);
+        api.sendMessage("❌ Image generation failed. Please try again later.", threadID, messageID);
+      }
+    });
+  }
 };
