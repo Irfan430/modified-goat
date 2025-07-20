@@ -5,115 +5,135 @@ const fs = require("fs");
 const path = require("path");
 const pidusage = require("pidusage");
 
+// Get bot name from config
+let botName = "GoatBot";
+try {
+  const configPath = path.join(__dirname, "../../config.dev.json");
+  const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+  if (config.nickNameBot) botName = config.nickNameBot;
+} catch (e) {
+  console.warn("⚠️ Bot name not found in config. Using default.");
+}
+
+// Keep track of bot start time
+const botStartTime = Date.now();
+
 module.exports = {
   config: {
     name: "uptime",
     aliases: ["upt", "status"],
-    version: "2.0",
-    author: "ChatGPT & Irfan",
+    version: "3.1",
+    author: "ChatGPT x Irfan",
     role: 0,
-    botName: "MyAwesomeBot",  // <-- এখানে বটের নাম বসাও
-    shortDescription: "Stylish uptime status image",
+    shortDescription: "Stylish uptime status (image + text)",
     category: "system",
     guide: "{pn}"
   },
 
-  onStart: async function({ api, event }) {
+  onStart: async function ({ api, event }) {
     try {
-      // System Data
       const uptime = process.uptime();
       const sysUptime = os.uptime();
-      const cpuInfo = os.cpus()[0]?.model || "Unknown CPU";
-      const cpuCores = os.cpus().length || 1;
       const totalMemMB = (os.totalmem() / 1024 / 1024).toFixed(1);
       const usedMemMB = (process.memoryUsage().rss / 1024 / 1024).toFixed(1);
-      const platform = os.platform();
+      const cpuInfo = os.cpus()[0]?.model || "Unknown CPU";
+      const cpuCores = os.cpus().length;
       const arch = os.arch();
       const hostname = os.hostname();
-      const usage = await pidusage(process.pid);
+      const platform = os.platform();
+      const pid = process.pid;
+      const nodeVersion = process.version;
+      const loadAvg = os.loadavg()[0].toFixed(2);
+      const now = moment();
+      const bootTime = now.clone().subtract(uptime, 'seconds').format("YYYY-MM-DD HH:mm:ss");
 
-      // Format seconds to h m s
-      function formatTime(s) {
-        const h = Math.floor(s / 3600);
+      const usage = await pidusage(pid);
+
+      // Format uptime
+      function formatDuration(s) {
+        const d = Math.floor(s / 86400);
+        const h = Math.floor((s % 86400) / 3600);
         const m = Math.floor((s % 3600) / 60);
         const sec = Math.floor(s % 60);
-        return `${h}h ${m}m ${sec}s`;
+        return `${d}d ${h}h ${m}m ${sec}s`;
       }
 
-      // Canvas setup
-      const width = 700;
-      const height = 450;
-      const canvas = createCanvas(width, height);
+      const formattedUptime = formatDuration(uptime);
+      const currentTime = moment().format("YYYY-MM-DD HH:mm:ss");
+
+      // ASCII Text Box Style Status
+      const asciiBox = `
+┏━ ${botName} - Uptime ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+┃ ⏱️ Start Time     : ${bootTime}
+┃ 🤖 Uptime         : ${formattedUptime}
+┃
+┃ 🧠 CPU            : ${cpuInfo} (${cpuCores} cores)
+┃ 💾 RAM Usage      : ${usedMemMB} / ${totalMemMB} MB
+┃ 📈 CPU Usage      : ${usage.cpu.toFixed(1)}%
+┃ 💻 Platform       : ${platform} ${arch}
+┃ 🖧 Hostname       : ${hostname}
+┃ 📟 Node.js        : ${nodeVersion}
+┃ 📉 Load Average   : ${loadAvg}
+┃ 📅 Current Time   : ${currentTime}
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+
+      // Create image using canvas
+      const canvas = createCanvas(750, 600);
       const ctx = canvas.getContext("2d");
 
-      // Background
-      ctx.fillStyle = "#121212";
-      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = "#0f172a"; // Dark background
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Title
-      ctx.fillStyle = "#00ff99";
-      ctx.font = "bold 32px Arial";
-      ctx.fillText("🤖 Bot Uptime Status", 20, 50);
+      ctx.fillStyle = "#22d3ee"; // Title color
+      ctx.font = "bold 30px Arial";
+      ctx.fillText(`🤖 ${botName} - Status`, 30, 50);
 
-      // Draw Box function
-      function drawBox(x, y, w, h, bgColor) {
-        ctx.fillStyle = bgColor;
-        ctx.fillRect(x, y, w, h);
-        ctx.strokeStyle = "#00ff99";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x, y, w, h);
-      }
-
-      // Draw Text function
-      function drawText(label, value, x, y) {
-        ctx.fillStyle = "#00ff99";
-        ctx.font = "bold 18px Arial";
-        ctx.fillText(label, x, y);
-        ctx.fillStyle = "#fff";
-        ctx.font = "16px Arial";
-        ctx.fillText(value, x + 150, y);
-      }
-
-      // Box & Text positions
-      const boxX = 20;
-      let boxY = 90;
-      const boxWidth = width - 40;
-      const boxHeight = 40;
-      const boxGap = 15;
-
-      // Data list to display
-      const dataList = [
-        { label: "⏱ Bot Uptime", value: formatTime(uptime) },
-        { label: "🖥 System Uptime", value: formatTime(sysUptime) },
-        { label: "💾 RAM Usage", value: `${usedMemMB} / ${totalMemMB} MB` },
-        { label: "⚙ CPU", value: `${cpuInfo} (${cpuCores} cores)` },
-        { label: "📈 CPU Usage", value: `${usage.cpu.toFixed(1)}%` },
-        { label: "💻 Platform", value: `${platform} (${arch})` },
-        { label: "🖧 Hostname", value: hostname },
-        { label: "🕓 Time", value: moment().format("YYYY-MM-DD HH:mm:ss") }
+      const data = [
+        { label: "Uptime", value: formattedUptime },
+        { label: "System Uptime", value: formatDuration(sysUptime) },
+        { label: "RAM", value: `${usedMemMB} / ${totalMemMB} MB` },
+        { label: "CPU", value: `${cpuInfo} (${cpuCores} cores)` },
+        { label: "CPU Usage", value: `${usage.cpu.toFixed(1)}%` },
+        { label: "Platform", value: `${platform} (${arch})` },
+        { label: "Hostname", value: hostname },
+        { label: "Node.js", value: nodeVersion },
+        { label: "Load Avg", value: loadAvg },
+        { label: "Start Time", value: bootTime },
+        { label: "Now", value: currentTime }
       ];
 
-      // Draw boxes and texts
-      for (const item of dataList) {
-        drawBox(boxX, boxY, boxWidth, boxHeight, "#222831");
-        drawText(item.label, item.value, boxX + 15, boxY + 27);
-        boxY += boxHeight + boxGap;
+      let y = 90;
+      for (const item of data) {
+        ctx.fillStyle = "#1e293b";
+        ctx.fillRect(30, y, 690, 40);
+        ctx.strokeStyle = "#22d3ee";
+        ctx.strokeRect(30, y, 690, 40);
+
+        ctx.fillStyle = "#22d3ee";
+        ctx.font = "bold 18px Arial";
+        ctx.fillText(`${item.label}:`, 40, y + 25);
+
+        ctx.fillStyle = "#fff";
+        ctx.font = "16px Arial";
+        ctx.fillText(item.value, 250, y + 25);
+
+        y += 50;
       }
 
-      // Save image to buffer & file
+      const imagePath = path.join(__dirname, "uptime_status.png");
       const buffer = canvas.toBuffer("image/png");
-      const imagePath = path.join(__dirname, "uptime_stylish.png");
       fs.writeFileSync(imagePath, buffer);
 
-      // Send image and delete after sending
-      await api.sendMessage({
-        body: `📊 Stylish ${this.config.botName} Status`,
+      // Send both image and text
+      api.sendMessage({
+        body: asciiBox,
         attachment: fs.createReadStream(imagePath)
       }, event.threadID, () => fs.unlinkSync(imagePath), event.messageID);
 
-    } catch (error) {
-      console.error("Uptime command error:", error);
-      return api.sendMessage("❌ Uptime কমান্ডে সমস্যা হয়েছে। আবার চেষ্টা করুন।", event.threadID, event.messageID);
+    } catch (err) {
+      console.error("❌ Uptime error:", err);
+      return api.sendMessage("❌ An error occurred while running the uptime command.", event.threadID, event.messageID);
     }
   }
 };
