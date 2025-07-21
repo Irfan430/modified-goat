@@ -20,11 +20,11 @@ module.exports = {
     if (!mention)
       return message.reply("⚔️ Please mention someone to battle!");
 
-    if (mention == senderID)
+    if (mention === senderID)
       return message.reply("🧍 You can't fight yourself, brave warrior.");
 
     if (cooldown.has(senderID))
-      return message.reply("⏳ You're resting from your last battle. Please wait!");
+      return message.reply("⏳ You're resting from your last battle. Please wait 1 minute!");
 
     cooldown.add(senderID);
     setTimeout(() => cooldown.delete(senderID), waitTime);
@@ -33,41 +33,52 @@ module.exports = {
     const opponentName = await usersData.getName(mention);
 
     message.reply({
-      body: `⚔️ ${senderName} has challenged ${opponentName} to a battle!\n\n👊 React with any emoji to accept.`,
+      body: `⚔️ ${senderName} has challenged ${opponentName} to a **VIP BATTLE**!\n\n🌀 ${opponentName}, react to this message with any emoji within **30s** to accept.`,
     }, (err, info) => {
+      if (err || !info.messageID) return;
+
+      // Store the battle request
       global.GoatBot.onReaction.set(info.messageID, {
         commandName: "battle",
         author: mention,
         senderID,
-        opponentID: mention,
         messageID: info.messageID,
-        onReact: async ({ event: reactionEvent }) => {
-          if (reactionEvent.userID != mention)
-            return;
-
-          let p1HP = 100, p2HP = 100;
-          let round = 1;
-          let log = `🔥 Battle Start: ${senderName} VS ${opponentName}\n\n`;
-
-          while (p1HP > 0 && p2HP > 0) {
-            const p1Attack = Math.floor(Math.random() * 25) + 5;
-            const p2Attack = Math.floor(Math.random() * 25) + 5;
-            p2HP -= p1Attack;
-            p1HP -= p2Attack;
-
-            log += `🎯 Round ${round}:\n`;
-            log += `👉 ${senderName} hits ${opponentName} for ${p1Attack} damage!\n`;
-            log += `👈 ${opponentName} hits ${senderName} for ${p2Attack} damage!\n`;
-            log += `❤️ HP - ${senderName}: ${Math.max(p1HP, 0)} | ${opponentName}: ${Math.max(p2HP, 0)}\n\n`;
-            round++;
-          }
-
-          let winner = p1HP > p2HP ? senderName : opponentName;
-          log += `🏆 Winner: ${winner}`;
-
-          message.reply(log);
-        }
+        time: Date.now()
       });
     });
+  },
+
+  onReaction: async function ({ message, event, usersData, reaction }) {
+    const { messageID, userID } = event;
+    const battleData = global.GoatBot.onReaction.get(messageID);
+    if (!battleData) return;
+
+    if (userID !== battleData.author) return;
+
+    const senderName = await usersData.getName(battleData.senderID);
+    const opponentName = await usersData.getName(userID);
+
+    let p1HP = 100, p2HP = 100;
+    let round = 1;
+    let log = `🔥 VIP Battle Begins: ${senderName} 🆚 ${opponentName}\n\n`;
+
+    while (p1HP > 0 && p2HP > 0) {
+      const p1Attack = Math.floor(Math.random() * 30) + 10;
+      const p2Attack = Math.floor(Math.random() * 30) + 10;
+      p2HP -= p1Attack;
+      p1HP -= p2Attack;
+
+      log += `🎯 Round ${round}:\n`;
+      log += `🗡️ ${senderName} attacks for ${p1Attack} damage\n`;
+      log += `🛡️ ${opponentName} counters for ${p2Attack} damage\n`;
+      log += `❤️ HP: ${senderName}: ${Math.max(p1HP, 0)} | ${opponentName}: ${Math.max(p2HP, 0)}\n\n`;
+      round++;
+    }
+
+    let winner = p1HP > p2HP ? senderName : opponentName;
+    log += `🏆 **Winner:** ${winner} - What a legendary fight!`;
+
+    message.reply(log);
+    global.GoatBot.onReaction.delete(messageID);
   }
 };
