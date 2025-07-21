@@ -2,10 +2,10 @@ module.exports = {
   config: {
     name: "setbal",
     aliases: ["setbalance", "setmoney"],
-    version: "1.2",
+    version: "1.1",
     author: "ChatGPT",
     countDown: 3,
-    role: 2,
+    role: 2, // Admin/Owner only
     description: "🎯 Set a user's balance manually with style!",
     category: "economy",
     guide: {
@@ -20,39 +20,34 @@ module.exports = {
   onStart: async function ({ message, event, args, usersData }) {
     const { senderID, mentions, messageReply } = event;
 
-    // 🔒 Admin UID with unlimited balance
-    const adminUIDs = [
-      "100054167013531" // Irfan's UID
-    ];
-
     // 🪙 Parse the amount
     const amount = parseFloat(args[args.length - 1]);
     if (isNaN(amount) || amount < 0) {
-      return message.reply(`❌ Invalid amount!\n➤ Example: setbal @user 10000`);
+      return message.reply(
+        `❌ Invalid amount provided!\n\n➤ Example: setbal @user 10000`
+      );
     }
 
-    // 🎯 Target user detection
+    // 🧍 Determine the target user
     let targetID;
     if (messageReply?.senderID) {
       targetID = messageReply.senderID;
     } else if (Object.keys(mentions).length > 0) {
       targetID = Object.keys(mentions)[0];
     } else if (args.length === 1) {
-      targetID = senderID;
+      targetID = senderID; // Self
     } else {
-      return message.reply(`❗ Mention a user, reply to someone, or just enter amount to set your own balance.`);
+      return message.reply(
+        `❗ Please mention a user, reply to a user, or just provide amount to set your own balance.`
+      );
     }
 
+    // 💰 Set the balance
+    await usersData.set(targetID, { money: amount });
     const name = await usersData.getName(targetID);
 
-    // 🚫 Prevent setting admin balance
-    if (adminUIDs.includes(targetID)) {
-      return message.reply(`🚫 You cannot modify the balance of admin user:\n👑 ${name}\n💰 Balance: $9999999999999M+`);
-    }
-
-    // ✅ Set balance
-    await usersData.set(targetID, { money: amount });
-
-    return message.reply(`✨ Balance Updated!\n\n👤 User: ${name}\n💰 New Balance: $${amount.toLocaleString()}`);
+    return message.reply(
+      `✨ Balance Updated!\n\n👤 User: ${name}\n💰 New Balance: $${amount.toLocaleString()}`
+    );
   }
 };
