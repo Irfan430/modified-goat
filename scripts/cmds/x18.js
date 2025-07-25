@@ -26,7 +26,7 @@ module.exports = {
     const page = parseInt(args[0]) || 1;
     const limit = parseInt(args[1]) || 1;
 
-    if (limit > 5) return message.reply("⚠️ You can request maximum 5 videos at once.");
+    if (limit > 10) return message.reply("⚠️ You can request maximum 10 videos at once.");
 
     try {
       const apiURL = `https://kaiz-apis.gleeze.com/api/xvideos?page=${page}&limit=${limit}&apikey=92dfd003-fe2d-4c30-9f0b-cc4532177838`;
