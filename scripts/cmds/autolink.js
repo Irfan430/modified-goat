@@ -3,18 +3,14 @@ const path = require("path");
 const axios = require("axios");
 const os = require("os");
 
-// Load admin UIDs from config.dev.json
 const config = require(path.resolve(__dirname, "../../config.dev.json"));
 const admins = Array.isArray(config.adminBot) ? config.adminBot : [];
 
-// Database for thread states
 const DB = path.resolve(__dirname, "../../database/autolink.json");
 if (!fs.existsSync(DB)) fs.writeFileSync(DB, JSON.stringify({}), "utf8");
 
-// API key
 const API_KEY = "92dfd003-fe2d-4c30-9f0b-cc4532177838";
 
-// Platform ↔ API mapping
 const PLATFORMS = [
   { name: "facebook", regex: /facebook\.com/, api: "fbdl-v2" },
   { name: "youtube",  regex: /(youtu\.be|youtube\.com)/, api: "yt-down" },
@@ -66,11 +62,9 @@ module.exports = {
     if (!db[threadID]) return;
     const text = event.body || "";
 
-    // Find URLs
     const urls = text.match(/https?:\/\/[^\s]+/g);
     if (!urls) return;
 
-    // Find supported platform and first matched link
     const link = urls.find(u => PLATFORMS.some(p => p.regex.test(u)));
     if (!link) return;
 
@@ -78,11 +72,11 @@ module.exports = {
     const apiUrl = `https://kaiz-apis.gleeze.com/api/${platform.api}?url=${encodeURIComponent(link)}&apikey=${API_KEY}`;
 
     try {
-      await message.reply("📥 ভিডিও ডাউনলোড হচ্ছে...");
+      await message.reply("📥 মিডিয়া ডাউনলোড হচ্ছে...");
 
       const { data } = await axios.get(apiUrl);
 
-      // YouTube handling
+      // YouTube
       if (platform.name === "youtube" && data.response) {
         let videoUrl = null;
         let title = "YouTube Video";
@@ -107,7 +101,6 @@ module.exports = {
         });
 
         response.data.pipe(writer);
-
         await new Promise((resolve, reject) => {
           writer.on("finish", resolve);
           writer.on("error", reject);
@@ -122,32 +115,46 @@ module.exports = {
         return;
       }
 
-      // Instagram handling
-      if (platform.name === "instagram" && data.result?.video_url) {
-        const streamRes = await axios.get(data.result.video_url, { responseType: "stream" });
-        return await message.send({
-          body: "✅ Instagram ভিডিও ডাউনলোড সফল হয়েছে!\nOWNER IRFAN",
-          attachment: streamRes.data,
-        });
+      // Instagram & TikTok: ভিডিও/ইমেজ চেক
+      if (["instagram", "tiktok"].includes(platform.name) && data.result) {
+        const result = data.result;
+
+        // ভিডিও থাকলে সেটাই পাঠাও
+        if (result.video_url) {
+          const streamRes = await axios.get(result.video_url, { responseType: "stream" });
+          return await message.send({
+            body: `✅ ভিডিও ডাউনলোড সফল হয়েছে!\nOWNER IRFAN`,
+            attachment: streamRes.data,
+          });
+        }
+
+        // ভিডিও না থাকলে ইমেজ (thumbnail) পাঠাও
+        if (result.thumbnail) {
+          const streamRes = await axios.get(result.thumbnail, { responseType: "stream" });
+          return await message.send({
+            body: `🖼️ ইমেজ ডাউনলোড সফল হয়েছে!\nOWNER IRFAN`,
+            attachment: streamRes.data,
+          });
+        }
       }
 
-      // Other platforms fallback
+      // Default fallback
       const fileUrl =
         data.download_url ||
         (Array.isArray(data.url) ? data.url[0] : data.url) ||
         null;
 
-      if (!fileUrl) return message.reply("❌ ভিডিও ডাউনলোড ব্যর্থ হয়েছে!");
+      if (!fileUrl) return message.reply("❌ মিডিয়া ডাউনলোড ব্যর্থ হয়েছে!");
 
       const streamRes = await axios.get(fileUrl, { responseType: "stream" });
       await message.send({
-        body: "✅ ভিডিও ডাউনলোড সফল হয়েছে!\nOWNER IRFAN",
+        body: `✅ ডাউনলোড সফল হয়েছে!\nOWNER IRFAN`,
         attachment: streamRes.data,
       });
 
     } catch (err) {
       console.error("[autolink]", err);
-      return message.reply("❌ ভিডিও ডাউনলোড ব্যর্থ হয়েছে!");
+      return message.reply("❌ মিডিয়া ডাউনলোড ব্যর্থ হয়েছে!");
     }
   }
 };
