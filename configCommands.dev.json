@@ -6,10 +6,6 @@
   },
   "envCommands": {
     "daily": {
-      "rewardDay1": {
-        "coin": 100,
-        "exp": 10
-      },
       "rewardFirstDay": {
         "coin": 100,
         "exp": 10
@@ -33,6 +29,9 @@
   },
   "envEvents": {
     "logsbot": {
+      "allow": true
+    },
+    "welcome": {
       "allow": true
     }
   }
