@@ -1,5 +1,6 @@
 const express = require("express");
 const app = express();
+app.set("trust proxy", 1); // trust proxy for secure cookies on Render/Heroku
 const fileUpload = require("express-fileupload");
 const rateLimit = require("express-rate-limit");
 const fs = require("fs-extra");
@@ -197,6 +198,7 @@ module.exports = async (api) => {
 	const dashBoardRoute = require("./routes/dashBoard.js")(paramsForRoutes);
 	const verifyFbidRoute = require("./routes/verifyfbid.js")(paramsForRoutes);
 	const apiRouter = require("./routes/api.js")(paramsForRoutes);
+	const manageRoute = require("./routes/manage.js")(paramsForRoutes);
 
 	app.get(["/", "/home"], (req, res) => {
 		res.render("home");
@@ -280,6 +282,7 @@ module.exports = async (api) => {
 	app.use("/dashboard", dashBoardRoute);
 	app.use("/verifyfbid", verifyFbidRoute);
 	app.use("/api", apiRouter);
+	app.use("/manage", manageRoute);
 
 	app.get("*", (req, res) => {
 		res.status(404).render("404");
@@ -291,7 +294,7 @@ module.exports = async (api) => {
 			return res.status(500).send(getText("app", "serverError"));
 	});
 
-	const PORT = config.dashBoard.port || config.serverUptime.port || 3001;
+	const PORT = process.env.PORT || config.dashBoard.port || config.serverUptime.port || 3001;
 	let dashBoardUrl = `https://${process.env.REPL_OWNER
 		? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
 		: process.env.API_SERVER_EXTERNAL == "https://api.glitch.com"
@@ -327,5 +330,4 @@ function validateEmail(email) {
 
 function convertSize(byte) {
 	return byte > 1024 ? byte > 1024 * 1024 ? (byte / 1024 / 1024).toFixed(2) + " MB" : (byte / 1024).toFixed(2) + " KB" : byte + " Byte";
-}
-
+										   }
